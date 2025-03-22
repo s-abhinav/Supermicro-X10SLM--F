@@ -1,0 +1,85 @@
+#+title: Readme
+
+*DISCLAIMER:* The information in this document is provided "as is" for informational purposes only. The author makes no warranties, express or implied, regarding its accuracy, completeness, reliability, or suitability for any purpose. Use of this information is at your own risk, and the author assumes no liability for any damages, losses, or consequences arising from its use. By following these instructions, you accept full responsibility for your actions and agree to hold the author harmless from any claims, lawsuits, or liabilities.
+
+I got two of the Supermicro X10SLM+-F for cheap and decided that one of them would be part of a hackintosh project.
+
+** NVME boot
+I have two projects with this motherboard. One is hosting a hackintosh and the other TrueNAS. On TrueNAS, I did not want to use any SATA ports for the boot drive and that left me with the only choice of using NVME on PCI-E. For the hackintosh, for some strange reasons that I have not yet found, macOS simply refused to install on a SATA drive. I absolutely had to get the motherboard to boot using an NVME SSD on a PCI card. This was not possible with any available BIOS from Supermicro and I decided to modify it so that it could do that. Since this motherboard supports BIOS flashing through IPMI, it was not much of a risk to mod its BIOS from my perspective and given that I got it for cheap. There is a possibility that even if the BIOS fails, IPMI should be able to flash a good one without even having to boot the motherboard.
+The BIOS is in [[file:BIOS/3.2a NVME/X10SLH9.531/x10slh9_nvme.531][NVME BIOS 3.2a]].
+
+The article in the Sources section recommends another mmtool version but I could not inject the NVME module with it. I however was able to do it using [[file:BIOS/3.2a NVME/X10SLH9.531/mmtool_v5.exe][mmtool v5]]. You don't have to worry about this part since I already did it, but if you do, it's a pretty good article on how to add value to older motherboards.
+
+*** BIOS configuration after flashing the NVME BIOS
+The most important part here is to verify if ~PATA SS:~ appears in Boot>Hard Disk Drive BBS Priority after flashing the NVME BIOS. If it does not, it means that the flashing was not successful.
+I flashed this BIOS succesfully on two Supermicro X10SLM+-F and both booted from the same NVME storage.
+**** TODO Advanced - how to get to this screen?
+
+| Option                                 | Value       | Comments                  |
+|----------------------------------------+-------------+---------------------------|
+| Above 4G Decoding                      | Enabled     | For GPU                   |
+| VGA Palette Snoop                      | Disabled    |                           |
+| CPU SLOT6 PCI-E 3.0 X8/16 OPROM        | EFI         | [[https://www.sapphiretech.com/en/consumer/nitro-rx-580-8g-g5][Sapphire NITRO+ RX 580 8G]] |
+| CPU SLOT5 PCI-E 3.0 X8/8 OPROM         | Legacy      |                           |
+| PCH SLOT4 PCI-E 2.0 X2/4 (IN X8) OPROM | EFI         | NVME SSD                  |
+| Launch Storage OpROM Policy            | UEFI Only   |                           |
+| Other PCI Device ROM Policy            | Legacy Only |                           |
+| Onboard LAN1 Option ROM                | Disabled    |                           |
+| Onboard LAN2 Option ROM                | Disabled    |                           |
+| VGA Priority                           | Onboard     |                           |
+| Network Stack                          | Disabled    |                           |
+
+**** Boot
+***** Hard Disk Drive BBS Priority
+- 1st Device: PATA SS:
+
+** Hackintosh
+
+*** Hardware
+- Motherboard
+  Supermicro X10SLM+-F
+
+- Storage
+  NVME SSD on PCI Card
+  TEAM TM8FP6512G
+  macOS boots pretty fast with it and is snappy. It is incredible that such an old hardware works really well with the latest macOS.
+
+- GPU
+  [[https://www.sapphiretech.com/en/consumer/nitro-rx-580-8g-g5][Sapphire NITRO+ RX 580 8G]]
+  The [[https://www.sapphiretech.com/en/consumer/pulse-rx-580-8g-g5][Sapphire Pulse RX 580 8G]] also works with it but does not display the OpenCore UEFI screen. It will boot to the OS and display fine after that.
+
+- 32 GB RAM
+  4 times
+  Size:	8 GB
+  Type:	DDR3
+  Speed:	1600 MHz
+  Manufacturer:	Hynix/Hyundai
+  Part Number:	HMT41GU7AFR8C-RD
+
+- CPU
+  Intel XEON CPU E3-1220 v3
+
+*** Limitations
+**** macOS will not install on SATA drives.
+**** Sleep does not work.
+To fix the sleep issue, I followed the open core documentations including remapping the USB ports. None of the changes helped.
+**** Top most ethernet port when in use will cause kernel panic.
+This motherboard has two ethernet ports and when the top most port is used, macOS will kernel panic right after boot.
+
+*** OpenCore
+I started working on the hackintosh project in August 2024 and got Sonoma to work pretty well. I planned to put up the EFI on github earlier but finally got the time to do it after upgrading to Sequoia. Sonoma worked stably since 2024. I just installed Sequoia and haven't used it long enough to tell how stable it is. If you need a stable system, use the [[file:OpenCore/EFI_Sonoma_release/][Sonoma EFI]] and install Sonoma. Sonoma could even work with the Sequoia EFI if you want to be adventurous.
+
+**** Installation
+OpenCore has very good documentation which I recommend consulting before setting up a hackintosh.
+In brief,
+1. copy the [[file:OpenCore/EFI_Sequoia_release/][Sequoia EFI]] to your EFI partition and rename it to EFI.
+2. Generate your serial using [[https://github.com/corpnewt/GenSMBIOS][GenSMBIOS]]
+3. Use ProperTree and open EFI/OC/config.plist, Platforminfo > Generic and replace the property values from GenSMBIOS.
+4. SystemProductName should be left as iMac19,2
+
+*** Improvements
+**** Cooling
+One of my motherboards came with a square heatsink and loud 60x60x25 mm fan. I replaced the fan with [[https://www.amazon.ca/dp/B00VXTANZ4?ref=ppx_yo2ov_dt_b_fed_asin_title][Noctua NF-A6x25 PWM, Premium Quiet Fan, 4-Pin (60mm, Brown)]] and the server is barely audible. When doing research online on completely replacing the heatsink, the advise was to not remove it since it's glued on the motherboard. This approach is the safest.
+
+** Sources
+[[https://winraid.level1techs.com/t/howto-get-full-nvme-support-for-all-systems-with-an-ami-uefi-bios/30901][Get full NVMe Support for all Systems with an AMI UEFI BIOS]]
